@@ -1,0 +1,1182 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KnockKey</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #F3F3F1;
+  --surface: #FFFFFF;
+  --raised: #FFFFFF;
+  --ink: #151514;
+  --ink2: #66665F;
+  --ink3: #A6A6A0;
+  --line: rgba(21, 21, 20, .10);
+  --line2: rgba(21, 21, 20, .18);
+  --fill: rgba(21, 21, 20, .05);
+  --fill2: rgba(21, 21, 20, .09);
+  --bar: rgba(21, 21, 20, .26);
+  --accent: #EA4E1A;
+  --accent-soft: rgba(234, 78, 26, .11);
+  --warn: #9A6200;
+  --err: #C7303D;
+  --scrim: rgba(21, 21, 20, .28);
+  --shadow: -24px 0 60px -20px rgba(0, 0, 0, .22);
+  --display: "Bahnschrift", "Segoe UI", system-ui, sans-serif;
+  --ui: "Segoe UI", system-ui, sans-serif;
+  --mono: "Cascadia Mono", Consolas, monospace;
+  --ease: cubic-bezier(.22, .9, .24, 1);
+  --spring: cubic-bezier(.3, 1.35, .45, 1);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131312;
+    --surface: #1B1B1A;
+    --raised: #2C2C2A;
+    --ink: #EEEEEA;
+    --ink2: #9B9B93;
+    --ink3: #5F5F5A;
+    --line: rgba(255, 255, 255, .09);
+    --line2: rgba(255, 255, 255, .17);
+    --fill: rgba(255, 255, 255, .055);
+    --fill2: rgba(255, 255, 255, .10);
+    --bar: rgba(255, 255, 255, .24);
+    --accent: #FF6B35;
+    --accent-soft: rgba(255, 107, 53, .13);
+    --warn: #DDA640;
+    --err: #FF6672;
+    --scrim: rgba(0, 0, 0, .5);
+    --shadow: -24px 0 60px -20px rgba(0, 0, 0, .6);
+  }
+}
+
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.45 var(--ui);
+  overflow: hidden;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+button, input, select { font: inherit; color: inherit; }
+button { border: 0; background: none; padding: 0; cursor: default; }
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+#app {
+  position: relative;
+  isolation: isolate;
+  height: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 28px 36px 0;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  transition: opacity .35s ease;
+}
+body.ready #app { opacity: 1; }
+
+/* ---------- Kopf ---------- */
+.top { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+h1 {
+  font: 600 34px/1.05 var(--display);
+  font-stretch: 92%;
+  letter-spacing: -.012em;
+  transition: color .3s ease;
+}
+h1.swap { animation: swap .4s var(--ease); }
+@keyframes swap { from { opacity: 0; transform: translateY(6px); } }
+body.paused h1, body.nomic h1 { color: var(--ink3); }
+
+.pick {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  color: var(--ink2);
+  font-size: 13px;
+  border-radius: 6px;
+  transition: color .15s ease;
+}
+.pick:hover { color: var(--ink); }
+.pick > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick small { font-size: inherit; color: var(--ink3); }
+.pick svg { flex: none; opacity: .7; }
+.pick select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
+.pick:has(select:focus-visible) { outline: 2px solid var(--ink); outline-offset: 3px; }
+.top .pick { margin-top: 9px; }
+
+/* ---------- Schalter ---------- */
+.switch {
+  flex: none;
+  position: relative;
+  width: 36px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--fill2);
+  box-shadow: inset 0 0 0 1px var(--line);
+  transition: background .22s ease, box-shadow .22s ease;
+}
+.switch i {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--ink2);
+  transition: transform .3s var(--spring), width .18s ease, background .22s ease;
+}
+.switch:active i { width: 20px; }
+.switch[aria-checked="true"] { background: var(--ink); box-shadow: none; }
+.switch[aria-checked="true"] i { background: var(--bg); transform: translateX(14px); }
+.switch[aria-checked="true"]:active i { transform: translateX(10px); }
+.switch.big { width: 50px; height: 30px; border-radius: 15px; margin-top: 4px; }
+.switch.big i { top: 4px; left: 4px; width: 22px; height: 22px; border-radius: 11px; }
+.switch.big:active i { width: 27px; }
+.switch.big[aria-checked="true"] i { transform: translateX(20px); }
+.switch.big[aria-checked="true"]:active i { transform: translateX(15px); }
+
+/* ---------- Spur ---------- */
+.trace { position: relative; height: 132px; margin-top: 20px; }
+#scope {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 16%);
+  mask-image: linear-gradient(to right, transparent, #000 16%);
+}
+.thr {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 24px;
+  margin-top: -12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  cursor: ns-resize;
+  touch-action: none;
+}
+.thr span {
+  padding: 4px 0;
+  color: var(--ink2);
+  font: 500 12px/1 var(--display);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .01em;
+  transition: color .15s ease;
+}
+.thr:hover span, .thr.drag span { color: var(--ink); }
+.trace-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: var(--ink2);
+  font-size: 13px;
+}
+.trace-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 38px;
+  border-top: 1px solid var(--line);
+  color: var(--ink2);
+  font-size: 12.5px;
+}
+.trace-foot b { font: 500 13px/1 var(--display); font-variant-numeric: tabular-nums; color: var(--ink); }
+#info { display: flex; align-items: center; gap: 10px; min-width: 0; }
+#info.swap { animation: swap .35s var(--ease); }
+.count { display: inline-flex; gap: 5px; }
+.count i {
+  width: 7px; height: 7px; border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--ink3);
+  transition: background .15s ease, box-shadow .15s ease, transform .3s var(--spring);
+}
+.count i.on { background: var(--accent); box-shadow: none; transform: scale(1.25); }
+
+/* ---------- Knöpfe ---------- */
+.btn {
+  flex: none;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 8px;
+  background: var(--fill);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background .15s ease, opacity .15s ease, transform .12s ease;
+}
+.btn:hover { background: var(--fill2); }
+.btn:active { transform: scale(.97); }
+.btn.primary { background: var(--ink); color: var(--bg); }
+.btn.primary:hover { opacity: .86; }
+.btn.danger { background: none; color: var(--err); padding: 0 10px; margin-left: -10px; }
+.btn.danger:hover { background: var(--fill); }
+.btn.rec { background: var(--accent); color: #fff; }
+.btn[disabled] { opacity: .45; pointer-events: none; }
+.link {
+  flex: none;
+  padding: 4px 8px;
+  margin: 0 -8px;
+  border-radius: 6px;
+  color: var(--ink2);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: color .15s ease, background .15s ease;
+}
+.link:hover { color: var(--ink); background: var(--fill); }
+.link[disabled] { opacity: 0; pointer-events: none; }
+.icon {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: var(--ink2);
+  transition: color .15s ease, background .15s ease, opacity .15s ease, transform .12s ease;
+}
+.icon:hover { color: var(--ink); background: var(--fill2); }
+.icon:active { transform: scale(.92); }
+
+/* ---------- Befehle ---------- */
+.cmds { flex: 1; min-height: 0; display: flex; flex-direction: column; margin-top: 22px; }
+.cmds-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 10px; }
+h2 { font-size: 13px; font-weight: 600; color: var(--ink2); }
+.list { flex: 1; min-height: 0; overflow-y: auto; margin: 0 -12px; padding: 0 12px 12px; }
+.list::-webkit-scrollbar, .sheet-body::-webkit-scrollbar { width: 10px; }
+.list::-webkit-scrollbar-thumb, .sheet-body::-webkit-scrollbar-thumb {
+  background: var(--fill2); border-radius: 5px; border: 3px solid transparent; background-clip: content-box;
+}
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr) minmax(0, auto) 30px 36px;
+  align-items: center;
+  column-gap: 14px;
+  height: 58px;
+  margin: 0 -12px;
+  padding: 0 12px;
+  border-radius: 10px;
+  transition: background .15s ease, opacity .25s ease;
+}
+.row::before {
+  content: "";
+  position: absolute;
+  left: 12px; right: 12px; top: 0;
+  height: 1px;
+  background: var(--line);
+  transition: opacity .15s ease;
+}
+.row:hover { background: var(--fill); }
+.row:hover::before, .row:hover + .row::before { opacity: 0; }
+.row.enter { animation: enter .45s var(--ease) backwards; }
+@keyframes enter { from { opacity: 0; transform: translateY(8px); } }
+.row.leave { animation: leave .26s ease forwards; }
+@keyframes leave { to { opacity: 0; height: 0; transform: translateX(-10px); } }
+.row.hit { animation: hit 1.1s ease-out; }
+@keyframes hit { 0%, 18% { background: var(--accent-soft); } }
+.row.out { opacity: .4; }
+
+.pips { display: flex; gap: 5px; }
+.pips i {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--ink);
+  transition: background .12s ease, box-shadow .2s ease, transform .3s var(--spring);
+}
+.pips i.on { background: var(--accent); transform: scale(1.3); }
+.row.off .pips i { background: transparent; box-shadow: inset 0 0 0 1.5px var(--ink3); }
+.row.shadowed .pips i { background: transparent; box-shadow: inset 0 0 0 1.5px var(--warn); }
+
+.row-name {
+  justify-self: start;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+  transition: color .2s ease;
+}
+.row-name::after { content: ""; position: absolute; inset: 0; border-radius: 10px; }
+.row-name:focus-visible { outline: none; }
+.row-name:focus-visible::after { outline: 2px solid var(--ink); outline-offset: -2px; }
+.row.off .row-name { color: var(--ink3); }
+.row-what {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink2);
+  font-size: 13px;
+  transition: opacity .2s ease;
+}
+.row-what > span { overflow: hidden; text-overflow: ellipsis; }
+.row-what code { font: 12px var(--mono); overflow: hidden; text-overflow: ellipsis; }
+.row.off .row-what { opacity: .5; }
+.row.shadowed .row-what { color: var(--warn); }
+kbd {
+  flex: none;
+  min-width: 24px;
+  padding: 4px 7px 5px;
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line2), inset 0 -1.5px 0 var(--line2);
+  color: var(--ink);
+  font: 600 11.5px/1 var(--ui);
+  text-align: center;
+}
+.row .icon, .row .switch { position: relative; z-index: 1; }
+.row .icon { opacity: 0; }
+.row:hover .icon, .row .icon:focus-visible { opacity: 1; }
+.empty { padding: 44px 0; text-align: center; color: var(--ink2); font-size: 13.5px; border-top: 1px solid var(--line); }
+
+/* ---------- Fuß ---------- */
+.bottom {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  height: 46px;
+  border-top: 1px solid var(--line);
+  color: var(--ink2);
+  font-size: 12.5px;
+}
+#ticker { display: flex; gap: 10px; min-width: 0; }
+#ticker.swap { animation: swap .4s var(--ease); }
+#ticker time, #log time { color: var(--ink3); font: 500 12.5px/1.45 var(--display); font-variant-numeric: tabular-nums; }
+#ticker span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.k-ok { color: var(--ink); }
+.k-err { color: var(--err); }
+.k-warn { color: var(--warn); }
+
+/* ---------- Seitenblatt ---------- */
+.scrim {
+  position: fixed;
+  inset: 0;
+  background: var(--scrim);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 10;
+  transition: opacity .3s ease;
+}
+body.sheet-open .scrim { opacity: 1; pointer-events: auto; }
+.sheet {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: min(430px, 100%);
+  z-index: 11;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  transform: translateX(104%);
+  visibility: hidden;
+  transition: transform .34s var(--ease), visibility 0s .34s;
+}
+.sheet.open { transform: none; visibility: visible; transition: transform .42s var(--ease); }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 22px 20px 6px 28px; }
+.sheet-head h3 { font: 600 22px/1.2 var(--display); font-stretch: 92%; }
+.sheet-body { flex: 1; min-height: 0; overflow-y: auto; padding: 18px 28px 8px; }
+.sheet-foot { display: flex; align-items: center; gap: 8px; padding: 14px 28px 22px; }
+.grow { flex: 1; }
+
+.field { display: block; margin-bottom: 22px; }
+.field > span, .label { display: block; margin-bottom: 8px; color: var(--ink2); font-size: 12.5px; font-weight: 600; }
+input[type="text"] {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--line2);
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+  transition: box-shadow .15s ease;
+}
+input[type="text"]::placeholder { color: var(--ink3); }
+input[type="text"]:hover { box-shadow: inset 0 0 0 1px var(--ink3); }
+input[type="text"]:focus { box-shadow: inset 0 0 0 1.5px var(--ink); outline: none; }
+input.bad { animation: shake .3s ease; box-shadow: inset 0 0 0 1.5px var(--err) !important; }
+@keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+.inline { display: flex; gap: 8px; }
+.inline .btn { height: 38px; border-radius: 9px; }
+.note { margin-top: 8px; color: var(--ink2); font-size: 12.5px; }
+.note:empty { display: none; }
+.note.warn { color: var(--warn); }
+.note.err { color: var(--err); }
+.field .pick { height: 38px; padding: 0 12px; width: 100%; justify-content: space-between; border-radius: 9px; box-shadow: inset 0 0 0 1px var(--line2); color: var(--ink); font-size: 14px; }
+.field .pick:hover { box-shadow: inset 0 0 0 1px var(--ink3); }
+
+.seg { position: relative; display: flex; padding: 3px; border-radius: 10px; background: var(--fill); }
+.seg button {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 7px;
+  color: var(--ink2);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: color .2s ease;
+}
+.seg button:hover, .seg button[aria-checked="true"] { color: var(--ink); }
+.seg.num button { font: 600 15px/1 var(--display); }
+.seg .thumb {
+  position: absolute;
+  top: 3px; left: 0;
+  height: 32px;
+  border-radius: 7px;
+  background: var(--raised);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .14), 0 0 0 1px var(--line);
+  transition: transform .34s var(--spring), width .34s var(--spring);
+}
+
+.opt { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 0; border-top: 1px solid var(--line); }
+.opt strong { display: block; font-weight: 600; }
+.opt p { color: var(--ink2); font-size: 12.5px; margin-top: 1px; }
+.opt output { font: 500 14px/1 var(--display); font-variant-numeric: tabular-nums; color: var(--ink2); }
+.opt.first { border-top: 0; padding-top: 0; }
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 24px;
+  margin: -4px 0 12px;
+  background: none;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--ink) var(--p, 50%), var(--fill2) var(--p, 50%));
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6.5px;
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 0 0 3px var(--surface);
+  transition: transform .2s var(--spring);
+}
+input[type="range"]:hover::-webkit-slider-thumb { transform: scale(1.15); }
+input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.3); }
+.log-head { margin: 22px 0 10px; }
+#log { list-style: none; padding: 0; font-size: 12.5px; color: var(--ink2); }
+#log li { display: flex; gap: 10px; padding: 4px 0; }
+#log li span { min-width: 0; overflow-wrap: anywhere; }
+.about { color: var(--ink3); font-size: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+</style>
+</head>
+<body>
+
+<main id="app">
+  <header class="top">
+    <div style="min-width:0">
+      <h1 id="headline">&nbsp;</h1>
+      <label class="pick" title="Mikrofon wählen">
+        <span id="device-label"></span>
+        <svg width="9" height="6" viewBox="0 0 9 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l3.5 3.5L8 1"/></svg>
+        <select id="device" aria-label="Mikrofon"></select>
+      </label>
+    </div>
+    <button class="switch big" id="master" role="switch" aria-checked="false" aria-label="KnockKey ein- oder ausschalten"><i></i></button>
+  </header>
+
+  <section class="trace" aria-label="Was das Mikrofon gerade hört">
+    <canvas id="scope"></canvas>
+    <div class="thr" id="thr" title="Ziehen, um die Schwelle zu ändern"><span id="thr-tag"></span></div>
+    <div class="trace-empty" id="nomic" hidden>Kein Mikrofon gefunden.<br>Schließ eins an oder wähl oben ein anderes Gerät.</div>
+  </section>
+  <div class="trace-foot">
+    <div id="info"></div>
+    <button class="link" id="calib">Automatisch einstellen</button>
+  </div>
+
+  <section class="cmds">
+    <div class="cmds-head">
+      <h2>Befehle</h2>
+      <button class="btn primary" id="add">Neuer Befehl</button>
+    </div>
+    <div class="list" id="list"></div>
+  </section>
+
+  <footer class="bottom">
+    <div id="ticker"></div>
+    <button class="link" id="open-settings">Einstellungen</button>
+  </footer>
+</main>
+
+<div class="scrim" id="scrim"></div>
+
+<aside class="sheet" id="edit" inert aria-labelledby="edit-title">
+  <div class="sheet-head">
+    <h3 id="edit-title">Neuer Befehl</h3>
+    <button class="icon" data-close aria-label="Schließen"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1.5 1.5l9 9M10.5 1.5l-9 9"/></svg></button>
+  </div>
+  <div class="sheet-body">
+    <div class="field">
+      <span>Vorlage</span>
+      <label class="pick">
+        <span id="preset-label">Eigener Befehl</span>
+        <svg width="9" height="6" viewBox="0 0 9 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l3.5 3.5L8 1"/></svg>
+        <select id="f-preset" aria-label="Vorlage"></select>
+      </label>
+    </div>
+    <label class="field">
+      <span>Name</span>
+      <input type="text" id="f-name" placeholder="z. B. Screenshot" spellcheck="false" autocomplete="off">
+    </label>
+    <div class="field">
+      <span>Wie oft klopfen?</span>
+      <div class="seg num" id="f-knocks" role="radiogroup" aria-label="Anzahl Klopfer"></div>
+      <p class="note warn" id="f-knocks-note"></p>
+    </div>
+    <div class="field">
+      <span>Was soll passieren?</span>
+      <div class="seg" id="f-type" role="radiogroup" aria-label="Aktion"></div>
+    </div>
+    <div class="field">
+      <span id="f-value-label">Tastenkürzel</span>
+      <div class="inline" id="f-value-row">
+        <input type="text" id="f-value" spellcheck="false" autocomplete="off">
+        <button class="btn" id="f-rec" type="button">Aufnehmen</button>
+      </div>
+      <p class="note" id="f-hint"></p>
+    </div>
+  </div>
+  <div class="sheet-foot">
+    <button class="btn danger" id="f-del">Löschen</button>
+    <span class="grow"></span>
+    <button class="btn" id="f-test">Testen</button>
+    <button class="btn primary" id="f-save">Speichern</button>
+  </div>
+</aside>
+
+<aside class="sheet" id="settings" inert aria-labelledby="settings-title">
+  <div class="sheet-head">
+    <h3 id="settings-title">Einstellungen</h3>
+    <button class="icon" data-close aria-label="Schließen"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1.5 1.5l9 9M10.5 1.5l-9 9"/></svg></button>
+  </div>
+  <div class="sheet-body">
+    <div class="opt first">
+      <div><strong>Pause zwischen Klopfern</strong><p>So lange wartet KnockKey auf den nächsten Klopfer.</p></div>
+      <output id="gap-out"></output>
+    </div>
+    <input type="range" id="gap" min="0.25" max="1" step="0.05" aria-label="Pause zwischen Klopfern">
+    <div class="opt">
+      <div><strong>Beim Tippen ignorieren</strong><p>Tastenanschläge lösen nichts aus.</p></div>
+      <button class="switch" role="switch" data-opt="typing_lockout" aria-label="Beim Tippen ignorieren"><i></i></button>
+    </div>
+    <div class="opt" id="opt-tray">
+      <div><strong>Im Infobereich weiterlaufen</strong><p>Fenster schließen beendet KnockKey nicht.</p></div>
+      <button class="switch" role="switch" data-opt="minimize_to_tray" aria-label="Im Infobereich weiterlaufen"><i></i></button>
+    </div>
+    <div class="opt">
+      <div><strong>Mit Windows starten</strong><p>Startet unsichtbar im Infobereich.</p></div>
+      <button class="switch" role="switch" data-opt="autostart" aria-label="Mit Windows starten"><i></i></button>
+    </div>
+    <div class="label log-head">Verlauf</div>
+    <ol id="log"></ol>
+  </div>
+  <div class="sheet-foot"><span class="about" id="about"></span></div>
+</aside>
+
+<script>
+(() => {
+'use strict';
+
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const num = (v, d = 3) => Number(v).toFixed(d).replace('.', ',');
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+const replay = (el, cls) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
+
+let api, S;
+const cmds = () => S.config.commands;
+
+// ---------- Texte ----------
+const KEYS = {
+  ctrl: 'Strg', shift: 'Umschalt', alt: 'Alt', altright: 'AltGr', win: 'Win', esc: 'Esc', escape: 'Esc',
+  enter: 'Enter', space: 'Leertaste', tab: 'Tab', backspace: 'Rück', delete: 'Entf', del: 'Entf',
+  insert: 'Einfg', home: 'Pos1', end: 'Ende', pageup: 'Bild ↑', pagedown: 'Bild ↓',
+  left: '←', right: '→', up: '↑', down: '↓', printscreen: 'Druck', playpause: 'Play / Pause',
+  nexttrack: 'Nächster Titel', prevtrack: 'Vorheriger Titel', volumemute: 'Stumm',
+  volumeup: 'Lauter', volumedown: 'Leiser',
+};
+const keyLabel = k => KEYS[k] || (k.length === 1 ? k.toUpperCase() : k[0].toUpperCase() + k.slice(1));
+const TYPES = {
+  hotkey: {tab: 'Tastenkürzel', label: 'Tastenkürzel', placeholder: 'z. B. win+shift+s',
+           hint: 'Tasten mit + verbinden, z. B. ctrl+shift+esc – oder einfach aufnehmen.'},
+  open: {tab: 'Öffnen', label: 'Programm, Datei oder Adresse', placeholder: 'z. B. notepad.exe oder https://…',
+         hint: 'Alles, was sich per Doppelklick öffnen lässt – auch Webseiten.'},
+  command: {tab: 'Befehl', label: 'Befehl', placeholder: '', hint: 'Wird in der Eingabeaufforderung (cmd) ausgeführt.'},
+  text: {tab: 'Text', label: 'Text', placeholder: '', hint: 'Wird dort eingefügt, wo gerade der Cursor steht.'},
+  lock: {tab: 'Sperren', label: '', placeholder: '', hint: 'Sperrt den PC. Mehr gibt es hier nicht einzustellen.'},
+};
+
+function describe(c) {
+  const v = c.value || '';
+  if (c.type === 'hotkey') {
+    return v.split('+').map(k => k.trim().toLowerCase()).filter(Boolean)
+      .map(k => `<kbd>${esc(keyLabel(k))}</kbd>`).join('');
+  }
+  if (c.type === 'lock') return '<span>Sperrt den PC</span>';
+  if (c.type === 'open') return `<span>Öffnet ${esc(v)}</span>`;
+  if (c.type === 'command') return `<code>${esc(v)}</code>`;
+  return `<span>Fügt „${esc(v)}“ ein</span>`;
+}
+
+// ---------- Status ----------
+function setStatus() {
+  const nomic = !S.mic_ok, paused = !S.config.enabled;
+  const text = nomic ? 'Kein Mikrofon' : paused ? 'Pausiert' : 'Hört zu';
+  const h = $('#headline');
+  if (h.textContent !== text) { h.textContent = text; replay(h, 'swap'); }
+  document.body.classList.toggle('nomic', nomic);
+  document.body.classList.toggle('paused', paused && !nomic);
+  $('#nomic').hidden = !nomic;
+  $('#thr').hidden = nomic;
+  $('#calib').hidden = nomic;
+  $('#master').setAttribute('aria-checked', String(!paused));
+}
+
+function renderDevices() {
+  const sel = $('#device');
+  sel.innerHTML = S.devices.length
+    ? S.devices.map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join('')
+    : '<option value="">Kein Mikrofon gefunden</option>';
+  if (S.device) sel.value = S.device;
+  showDevice(sel.value || 'Kein Mikrofon gefunden');
+}
+function showDevice(label) {
+  const [name, host] = label.split(/\s+·\s+/);
+  $('#device-label').innerHTML = esc(name) + (host ? ` <small>· ${esc(host)}</small>` : '');
+}
+$('#device').addEventListener('change', async e => {
+  showDevice(e.target.value);
+  const r = await api.set_device(e.target.value);
+  S.device = e.target.value;
+  S.mic_ok = r.mic_ok;
+  setStatus();
+});
+$('#master').addEventListener('click', () => {
+  S.config.enabled = !S.config.enabled;
+  localUntil = performance.now() + 500;
+  setStatus();
+  api.set_enabled(S.config.enabled);
+});
+
+// ---------- Befehlsliste ----------
+function shadows() {
+  const first = {};
+  cmds().forEach((c, i) => { if (c.enabled && !(c.knocks in first)) first[c.knocks] = i; });
+  return cmds().map((c, i) => (c.enabled && first[c.knocks] !== i ? first[c.knocks] : -1));
+}
+function paintRow(el, c, i, sh) {
+  el.dataset.i = i;
+  el.dataset.n = c.knocks;
+  el.classList.toggle('off', !c.enabled);
+  el.classList.toggle('shadowed', sh >= 0);
+  const pips = $('.pips', el);
+  if (pips.childElementCount !== c.knocks) pips.innerHTML = '<i></i>'.repeat(c.knocks);
+  pips.setAttribute('aria-label', `${c.knocks}-mal klopfen`);
+  $('.row-name', el).textContent = c.name;
+  $('.row-what', el).innerHTML = sh >= 0
+    ? `<span>Gleiche Klopfzahl wie „${esc(cmds()[sh].name)}“ – wird übersprungen</span>`
+    : describe(c);
+  $('.switch', el).setAttribute('aria-checked', String(!!c.enabled));
+}
+function renderList(animate) {
+  const list = $('#list'), sh = shadows();
+  if (!cmds().length) {
+    list.innerHTML = '<div class="empty">Noch kein Befehl. Leg einen an und klopf los.</div>';
+    return;
+  }
+  const rows = $$('.row', list);
+  if (rows.length !== cmds().length) {
+    list.innerHTML = cmds().map(() => `
+      <div class="row">
+        <span class="pips" role="img"></span>
+        <button class="row-name" title="Bearbeiten"></button>
+        <span class="row-what"></span>
+        <button class="icon" data-act="test" title="Jetzt ausführen" aria-label="Jetzt ausführen"><svg width="11" height="12" viewBox="0 0 11 12" fill="currentColor"><path d="M1.2.5A.8.8 0 000 1.2v9.6a.8.8 0 001.2.7l8.4-4.8a.8.8 0 000-1.4L1.2.5z"/></svg></button>
+        <button class="switch" role="switch" data-act="toggle" aria-label="Befehl ein- oder ausschalten"><i></i></button>
+      </div>`).join('');
+  }
+  $$('.row', list).forEach((el, i) => {
+    paintRow(el, cmds()[i], i, sh[i]);
+    if (animate === true || animate === i) {
+      el.style.animationDelay = animate === true ? `${80 + i * 45}ms` : '0ms';
+      replay(el, 'enter');
+    }
+  });
+}
+$('#list').addEventListener('click', async e => {
+  const row = e.target.closest('.row');
+  if (!row) return;
+  const i = +row.dataset.i, act = e.target.closest('[data-act]');
+  if (!act) return openEditor(i);
+  if (act.dataset.act === 'test') return api.test_command(cmds()[i]);
+  cmds()[i].enabled = !cmds()[i].enabled;
+  renderList();
+  S.config.commands = await api.toggle_command(i, cmds()[i].enabled);
+  renderList();
+});
+$('#add').addEventListener('click', () => openEditor(null));
+
+let liveK = 0;
+function setLive(k) {
+  if (k === liveK) return;
+  liveK = k;
+  for (const el of $$('.row')) {
+    const n = +el.dataset.n;
+    const active = !el.classList.contains('off') && !el.classList.contains('shadowed');
+    $$('.pips i', el).forEach((p, j) => p.classList.toggle('on', active && k <= n && j < k));
+    el.classList.toggle('out', active && k > n);
+  }
+}
+
+// ---------- Verlauf ----------
+function addLog(ev) {
+  const html = `<time>${esc(ev.time)}</time><span class="k-${esc(ev.kind)}">${esc(ev.msg)}</span>`;
+  const li = document.createElement('li');
+  li.innerHTML = html;
+  const log = $('#log');
+  log.prepend(li);
+  while (log.childElementCount > 80) log.lastChild.remove();
+  const t = $('#ticker');
+  t.innerHTML = html;
+  replay(t, 'swap');
+}
+
+// ---------- Spur ----------
+const scope = $('#scope'), ctx = scope.getContext('2d');
+const BIN = 0.04, PITCH = 5, BARW = 3, TOP = 12, SCALE_MAX = 0.5, THR_MIN = 0.004;
+const bins = new Map();
+let W = 0, H = 0, gutter = 96, dim = 1, clockOff = NaN, thrShown = null, dragging = false, colors = {};
+let sampleCur = 0, eventCur = 0, firstPoll = true;
+
+function readColors() {
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of ['bar', 'accent', 'ink2']) colors[k] = cs.getPropertyValue('--' + k).trim();
+}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', readColors);
+new ResizeObserver(() => {
+  const r = scope.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  W = r.width; H = r.height;
+  scope.width = Math.round(W * dpr);
+  scope.height = Math.round(H * dpr);
+  paint();   // Größe ändern leert die Zeichenfläche – sofort neu zeichnen, sonst flackert es
+}).observe(scope);
+
+const yOf = v => Math.min(1, Math.sqrt(Math.max(v, 0) / SCALE_MAX)) * (H - TOP);
+const vOf = y => SCALE_MAX * Math.pow(Math.min(1, Math.max(0, y / (H - TOP))), 2);
+
+function draw() {
+  requestAnimationFrame(draw);
+  paint();
+}
+function paint() {
+  if (!W || !S) return;
+  const dpr = scope.width / W;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  const target = S.config.threshold;
+  thrShown = thrShown === null || dragging ? target : thrShown + (target - thrShown) * 0.2;
+  const thrY = yOf(thrShown);
+  const live = S.config.enabled && S.mic_ok;
+  const right = W - gutter;
+
+  dim += ((live ? 1 : 0.45) - dim) * 0.12;
+
+  if (!isNaN(clockOff) && S.mic_ok) {
+    const t = performance.now() / 1000 - clockOff - 0.05;
+    const last = Math.floor(t / BIN), n = Math.ceil(W / PITCH) + 2;
+    const quiet = new Path2D(), loud = new Path2D();
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, 0, right, H); ctx.clip();
+    for (let k = 0; k < n; k++) {
+      const i = last - k, v = bins.get(i) || 0;
+      const x = right - (t - i * BIN) / BIN * PITCH;
+      const h = Math.max(2, yOf(v));
+      (live && h > thrY ? loud : quiet).roundRect(x, H - h, BARW, h, [1.5, 1.5, 0, 0]);
+    }
+    ctx.globalAlpha = dim;
+    ctx.fillStyle = colors.bar; ctx.fill(quiet);
+    ctx.fillStyle = colors.accent; ctx.fill(loud);
+    ctx.restore();
+  }
+
+  if (S.mic_ok) {
+    const y = Math.round(H - thrY) + 0.5;
+    ctx.strokeStyle = colors.ink2;
+    ctx.globalAlpha = 0.75;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 4]);
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(right - 4, y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+    $('#thr').style.transform = `translateY(${H - thrY}px)`;
+    const tag = 'Schwelle ' + num(thrShown);
+    if ($('#thr-tag').textContent !== tag) {
+      $('#thr-tag').textContent = tag;
+      gutter = $('#thr-tag').offsetWidth + 6;
+    }
+  }
+}
+
+const thr = $('#thr');
+// Eigene Änderungen gelten kurz als maßgeblich, damit eine gerade laufende Abfrage
+// mit dem alten Stand sie nicht für einen Augenblick zurückdreht.
+let lastSent = 0, grab = 0, localUntil = 0;
+function dragTo(e, done) {
+  const r = scope.getBoundingClientRect();
+  const v = Math.max(THR_MIN, vOf(r.bottom - e.clientY - grab));
+  S.config.threshold = Math.round(v * 10000) / 10000;
+  const now = performance.now();
+  if (done || now - lastSent > 80) { lastSent = now; api.set_threshold(S.config.threshold, !!done); }
+}
+thr.addEventListener('pointerdown', e => {
+  dragging = true;
+  thr.classList.add('drag');
+  thr.setPointerCapture(e.pointerId);
+  // Abstand zwischen Mauszeiger und Linie merken, damit sie beim Anfassen nicht springt
+  grab = scope.getBoundingClientRect().bottom - e.clientY - yOf(S.config.threshold);
+});
+thr.addEventListener('pointermove', e => { if (dragging) dragTo(e); });
+const endDrag = e => {
+  if (!dragging) return;
+  dragTo(e, true);
+  dragging = false;
+  localUntil = performance.now() + 500;
+  thr.classList.remove('drag');
+};
+thr.addEventListener('pointerup', endDrag);
+thr.addEventListener('pointercancel', endDrag);
+
+// ---------- Info-Zeile + Einmessen ----------
+let infoKey = '', calibrating = false, infoHold = 0;
+function setInfo(key, html) {
+  if (key === infoKey) return;
+  const swap = key.split(':')[0] !== infoKey.split(':')[0];
+  infoKey = key;
+  $('#info').innerHTML = html;
+  if (swap) replay($('#info'), 'swap');
+}
+function updateInfo(r) {
+  if (calibrating) {
+    const n = Math.min(3, r.calib || 0);
+    setInfo('calib:' + n, `<span>Klopf dreimal auf den Rand</span><span class="count">${
+      [0, 1, 2].map(j => `<i class="${j < n ? 'on' : ''}"></i>`).join('')}</span>`);
+  } else if (performance.now() < infoHold) {
+    return;
+  } else if (!S.mic_ok) {
+    setInfo('nomic', '');
+  } else if (r.loudest != null) {
+    setInfo('loud:' + num(r.loudest), `<span>Lautester Klopfer der letzten 10 Sekunden <b>${num(r.loudest)}</b></span>`);
+  } else {
+    setInfo('hint', '<span>Klopf auf den Rand – die Ausschläge sollten über die Schwelle reichen.</span>');
+  }
+}
+$('#calib').addEventListener('click', async () => {
+  const btn = $('#calib');
+  btn.disabled = true;
+  calibrating = true;
+  updateInfo({calib: 0});
+  let r = {ok: false};
+  try { r = await api.calibrate(); } catch (e) {}
+  calibrating = false;
+  btn.disabled = false;
+  infoHold = performance.now() + 3500;
+  if (r.ok) {
+    S.config.threshold = r.threshold;
+    setInfo('done', `<span>Schwelle steht jetzt auf <b>${num(r.threshold)}</b>.</span>`);
+  } else {
+    setInfo('fail', '<span class="k-warn">Nichts gehört – klopf etwas fester oder wähl ein anderes Mikrofon.</span>');
+  }
+});
+
+// ---------- Abfrage ----------
+function onPoll(r) {
+  const off = performance.now() / 1000 - r.now;
+  if (isNaN(clockOff) || off < clockOff || off - clockOff > 0.5) clockOff = off;
+  for (const [t, p] of r.samples) {
+    const i = Math.floor(t / BIN), old = bins.get(i);
+    if (old === undefined || p > old) bins.set(i, p);
+  }
+  sampleCur = r.seq;
+  if (bins.size > 900) {
+    const cut = Math.floor(r.now / BIN) - 500;
+    for (const k of bins.keys()) if (k < cut) bins.delete(k);
+  }
+  const settled = performance.now() > localUntil;
+  if (settled && !dragging && !calibrating) S.config.threshold = r.threshold;
+  if (settled && (r.enabled !== S.config.enabled || r.mic_ok !== S.mic_ok)) {
+    S.config.enabled = r.enabled;
+    S.mic_ok = r.mic_ok;
+    setStatus();
+  }
+  setLive(r.knocks);
+  updateInfo(r);
+  for (const ev of r.events) {
+    eventCur = ev.id;
+    if (ev.type === 'log') addLog(ev);
+    else if (ev.type === 'pattern' && !firstPoll && ev.index >= 0) {
+      const row = $$('.row')[ev.index];
+      if (row) replay(row, 'hit');
+    }
+  }
+  firstPoll = false;
+}
+async function pollLoop() {
+  for (;;) {
+    if (document.hidden) { await sleep(300); continue; }
+    try { onPoll(await api.poll(sampleCur, eventCur)); } catch (e) {}
+    await sleep(30);
+  }
+}
+
+// ---------- Seitenblätter ----------
+let sheet = null, lastFocus = null;
+function openSheet(el) {
+  lastFocus = document.activeElement;
+  sheet = el;
+  el.inert = false;
+  el.classList.add('open');
+  document.body.classList.add('sheet-open');
+  $('#app').inert = true;
+}
+function closeSheet() {
+  if (!sheet) return;
+  sheet.classList.remove('open');
+  sheet.inert = true;
+  sheet = null;
+  document.body.classList.remove('sheet-open');
+  $('#app').inert = false;
+  if (lastFocus && lastFocus.isConnected) lastFocus.focus({preventScroll: true});
+}
+$('#scrim').addEventListener('click', closeSheet);
+for (const b of $$('[data-close]')) b.addEventListener('click', closeSheet);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && sheet && !recording) closeSheet(); });
+
+function makeSeg(el, opts, onChange) {
+  el.innerHTML = '<span class="thumb"></span>' + opts.map(([v, l]) =>
+    `<button type="button" role="radio" data-v="${v}">${l}</button>`).join('');
+  const thumb = el.firstChild;
+  const set = (v, anim = true) => {
+    el.dataset.value = v;
+    for (const b of $$('button', el)) {
+      const on = b.dataset.v === String(v);
+      b.setAttribute('aria-checked', String(on));
+      b.tabIndex = on ? 0 : -1;
+      if (!on) continue;
+      if (!anim) thumb.style.transition = 'none';
+      thumb.style.width = b.offsetWidth + 'px';
+      thumb.style.transform = `translateX(${b.offsetLeft}px)`;
+      if (!anim) { void thumb.offsetWidth; thumb.style.transition = ''; }
+    }
+  };
+  const pick = b => { set(b.dataset.v); b.focus(); onChange(b.dataset.v); };
+  el.addEventListener('click', e => { const b = e.target.closest('button'); if (b) pick(b); });
+  el.addEventListener('keydown', e => {
+    const d = {ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1}[e.key];
+    if (!d) return;
+    e.preventDefault();
+    const bs = $$('button', el), i = bs.findIndex(b => b.dataset.v === el.dataset.value);
+    pick(bs[(i + d + bs.length) % bs.length]);
+  });
+  return {set, get: () => el.dataset.value};
+}
+
+// ---------- Befehl bearbeiten ----------
+let E = null, recording = false;
+const segKnocks = makeSeg($('#f-knocks'), [2, 3, 4, 5, 6].map(n => [n, n + '×']), knocksChanged);
+const segType = makeSeg($('#f-type'), Object.entries(TYPES).map(([k, t]) => [k, t.tab]), typeChanged);
+
+function knocksChanged() {
+  const n = +segKnocks.get();
+  const other = cmds().find((c, i) => i !== E.index && c.enabled && c.knocks === n);
+  $('#f-knocks-note').textContent = other
+    ? `„${other.name}“ nutzt schon ${n}× – es gewinnt der Befehl, der weiter oben steht.` : '';
+}
+function typeChanged() {
+  const key = segType.get(), t = TYPES[key];
+  $('#f-value-label').hidden = key === 'lock';
+  $('#f-value-row').hidden = key === 'lock';
+  $('#f-rec').hidden = key !== 'hotkey';
+  $('#f-value-label').textContent = t.label;
+  $('#f-value').placeholder = t.placeholder;
+  hint(t.hint);
+}
+function hint(text, cls = '') {
+  const h = $('#f-hint');
+  h.textContent = text;
+  h.className = 'note ' + cls;
+}
+function openEditor(index) {
+  const isNew = index === null;
+  const used = new Set(cmds().filter(c => c.enabled).map(c => c.knocks));
+  const free = [2, 3, 4, 5, 6].find(n => !used.has(n)) || 2;
+  const c = isNew ? {name: '', knocks: free, type: 'hotkey', value: '', enabled: true} : cmds()[index];
+  E = {index, enabled: c.enabled};
+  $('#edit-title').textContent = isNew ? 'Neuer Befehl' : 'Befehl bearbeiten';
+  $('#f-del').hidden = isNew;
+  $('#f-preset').value = '';
+  $('#preset-label').textContent = 'Eigener Befehl';
+  $('#f-name').value = c.name;
+  $('#f-value').value = c.value || '';
+  segKnocks.set(c.knocks, false);
+  segType.set(c.type, false);
+  knocksChanged();
+  typeChanged();
+  openSheet($('#edit'));
+  if (isNew) setTimeout(() => $('#f-name').focus({preventScroll: true}), 120);
+}
+$('#f-preset').addEventListener('change', e => {
+  const p = S.presets[+e.target.value];
+  $('#preset-label').textContent = p ? p.name : 'Eigener Befehl';
+  if (!p) return;
+  $('#f-name').value = p.name;
+  $('#f-value').value = p.value;
+  segType.set(p.type);
+  typeChanged();
+});
+$('#f-rec').addEventListener('click', async () => {
+  const b = $('#f-rec');
+  recording = true;
+  b.classList.add('rec');
+  b.textContent = 'Drück die Tasten …';
+  let combo = '';
+  try { combo = await api.record_hotkey(); } catch (e) {}
+  recording = false;
+  b.classList.remove('rec');
+  b.textContent = 'Aufnehmen';
+  if (combo) $('#f-value').value = combo;
+});
+function collect() {
+  const type = segType.get();
+  const value = type === 'lock' ? '' : $('#f-value').value.trim();
+  if (type !== 'lock' && !value) {
+    hint('Hier fehlt noch etwas.', 'err');
+    replay($('#f-value'), 'bad');
+    $('#f-value').focus();
+    return null;
+  }
+  $('#f-value').classList.remove('bad');
+  const name = $('#f-name').value.trim() || (type === 'lock' ? 'PC sperren' : value);
+  return {name, knocks: +segKnocks.get(), type, value, enabled: E.enabled};
+}
+$('#f-value').addEventListener('input', () => {
+  $('#f-value').classList.remove('bad');
+  hint(TYPES[segType.get()].hint);
+});
+$('#f-test').addEventListener('click', async () => {
+  const c = collect();
+  if (!c) return;
+  hint('Wird in 1 Sekunde ausgeführt …');
+  await sleep(1000);
+  api.test_command(c);
+  hint(TYPES[segType.get()].hint);
+});
+$('#f-save').addEventListener('click', async () => {
+  const c = collect();
+  if (!c) return;
+  const index = E.index;
+  S.config.commands = await api.save_command(index, c);
+  closeSheet();
+  renderList(index === null ? cmds().length - 1 : undefined);
+});
+$('#f-del').addEventListener('click', async () => {
+  const index = E.index;
+  closeSheet();
+  const row = $$('.row')[index];
+  if (row) { row.classList.add('leave'); await sleep(260); }
+  S.config.commands = await api.delete_command(index);
+  renderList();
+});
+$('#edit').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.matches('input[type="text"]')) $('#f-save').click();
+});
+
+// ---------- Einstellungen ----------
+function syncSettings() {
+  const gap = $('#gap');
+  gap.value = S.config.max_gap;
+  showGap();
+  for (const b of $$('[data-opt]')) b.setAttribute('aria-checked', String(!!S.config[b.dataset.opt]));
+  $('#opt-tray').hidden = !S.tray;
+  $('#about').textContent = 'KnockKey ' + S.version;
+}
+function showGap() {
+  const g = $('#gap'), v = +g.value;
+  g.style.setProperty('--p', ((v - g.min) / (g.max - g.min) * 100) + '%');
+  $('#gap-out').textContent = num(v, 2) + ' s';
+}
+$('#gap').addEventListener('input', () => { showGap(); api.set_option('max_gap', +$('#gap').value); });
+for (const b of $$('[data-opt]')) {
+  b.addEventListener('click', async () => {
+    const key = b.dataset.opt, v = !S.config[key];
+    S.config[key] = v;
+    b.setAttribute('aria-checked', String(v));
+    S.config[key] = await api.set_option(key, v);
+    b.setAttribute('aria-checked', String(!!S.config[key]));
+  });
+}
+$('#open-settings').addEventListener('click', () => openSheet($('#settings')));
+
+// ---------- Start ----------
+let booted = false;
+async function boot() {
+  if (booted) return;
+  booted = true;
+  api = window.pywebview.api;
+  S = await api.get_state();
+  readColors();
+  $('#f-preset').innerHTML = '<option value="">Eigener Befehl</option>' +
+    S.presets.map((p, i) => `<option value="${i}">${esc(p.name)}</option>`).join('');
+  renderDevices();
+  setStatus();
+  renderList(true);
+  syncSettings();
+  document.body.classList.add('ready');
+  requestAnimationFrame(draw);
+  pollLoop();
+}
+if (window.pywebview && window.pywebview.api && window.pywebview.api.get_state) boot();
+else window.addEventListener('pywebviewready', boot);
+})();
+</script>
+</body>
+</html>

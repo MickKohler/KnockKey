@@ -8,7 +8,9 @@ KnockKey listens to the built-in microphone, detects knock patterns (2× – 6×
 
 ## Features
 
-- **Live level meter** with adjustable threshold and one-click auto-calibration
+- **Live trace** of what the microphone hears – drag the threshold line, or let it calibrate itself
+- **Live feedback** – the dots of each command light up while you knock
+- Follows the Windows **light / dark** setting
 - **Custom commands** for 2–6 knocks: hotkeys (recordable), open program/file/URL, shell command, paste text, lock PC
 - **Presets** for common actions (screenshot, play/pause, mute, task manager, …)
 - **Typing filter** – keystrokes don't trigger false knocks
@@ -26,8 +28,8 @@ pip install -r requirements.txt
 python knockkey.py
 ```
 
-1. Pick your microphone in the dropdown.
-2. Knock 2–3 times and click **Schwelle automatisch setzen** (auto-calibrate).
+1. Pick your microphone below the headline.
+2. Click **Automatisch einstellen** (auto-calibrate) and knock three times.
 3. Knock twice → screenshot tool opens.
 
 Start hidden in the tray: `python knockkey.py --tray`
@@ -48,4 +50,4 @@ python simple/knock.py --device 1 --threshold 0.04
 
 ## Tech
 
-Python · CustomTkinter · sounddevice (PortAudio) · NumPy · pynput · PyAutoGUI · pystray
+Python · pywebview (the interface is plain HTML/CSS/JS in `ui/index.html`, shown via Edge WebView2) · sounddevice (PortAudio) · NumPy · pynput · PyAutoGUI · pystray
