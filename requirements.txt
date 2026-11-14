@@ -1,0 +1,8 @@
+customtkinter
+sounddevice
+numpy
+pyautogui
+pynput
+pystray
+pillow
+pyperclip
